@@ -1,7 +1,6 @@
 {
-  "name": "dsh-session-purge",
+  "name": "@lxchapu/dsh-session-purge",
   "version": "0.1.0",
-  "private": true,
   "description": "彻底删除 DSH 会话：单条删除 + 仅看已归档时一键全部删除（带二次确认）",
   "keywords": [
     "dsh",
@@ -11,6 +10,18 @@
     "delete",
     "purge"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lxchapu/dsh-session-purge.git"
+  },
+  "homepage": "https://github.com/lxchapu/dsh-session-purge#readme",
+  "bugs": {
+    "url": "https://github.com/lxchapu/dsh-session-purge/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "type": "module",
   "main": "lib/index.js",
   "exports": {

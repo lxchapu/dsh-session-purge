@@ -1,10 +1,11 @@
 // 快速校验：前端 bundle 仍然注册成功，且 factory 能在桩依赖下执行。
 import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
 import { createContext, runInContext } from 'node:vm'
 
-const root = 'C:/Users/yangxu/Desktop/小鲨鱼/dsh-session-purge'
-const source = readFileSync(`${root}/lib/client.js`, 'utf8')
+const root = dirname(import.meta.dirname)
+const source = readFileSync(join(root, 'lib/client.js'), 'utf8')
 
 let registered = null
 const sandbox = {

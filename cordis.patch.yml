@@ -1,8 +1,8 @@
-# dsh-session-purge bundle patch
+# @lxchapu/dsh-session-purge bundle patch
 #
 # Mounts this plugin's Host half. The Client half is picked up automatically from
 # package.json's `dsh.client` declaration (served as a lazy bundle under
 # /plugins by @deepseek-ai/dsh-client-modules).
 - insert:
     - id: session-purge
-      name: dsh-session-purge
+      name: "@lxchapu/dsh-session-purge"

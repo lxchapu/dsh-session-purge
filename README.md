@@ -104,13 +104,33 @@ DSH 本身只能「归档」会话——归档只是把会话从分组界面隐�
 
 ## 安装
 
+从 npm 装：
+
+```
+dsh plugin --profile desktop add @lxchapu/dsh-session-purge
+```
+
+也可以从 GitHub 装：
+
+```
+dsh plugin --profile desktop add github:lxchapu/dsh-session-purge
+```
+
+在本机开发这个插件本身时，装本地目录并把改动即时接进去：
+
 ```
 dsh plugin --profile desktop add link:<本目录绝对路径>
 ```
 
+> 包名是 `@lxchapu/dsh-session-purge` 而不是 `dsh-session-purge`：后者在 npm 上已被
+> 另一位作者占用。
+
 安装命令会把本包追加进 profile 的 bundle 栈。前端 bundle 随 `dsh.client` 声明被
 `dsh-client-modules` 扫描并按需加载；`dsh.client.external` 里声明了
 `@deepseek-ai/dsh-client-ui-primitives`，以便菜单项复用官方那套行组件。
+
+`cordis.patch.yml` 里 `insert` 的 `name` 必须与 npm 包名逐字一致，否则宿主半解析不到
+模块，插件不会挂载。
 
 改前端（`lib/client.js`）只需硬刷新页面；改宿主（`lib/index.js`）需要重启应用。
 
