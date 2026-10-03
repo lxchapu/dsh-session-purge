@@ -21,7 +21,8 @@ createContext(sandbox)
 runInContext(source, sandbox)
 
 assert.ok(registered !== null, '客户端 bundle 没有调用 __ModuleLoader__.load')
-assert.equal(registered.id, 'dsh-session-purge')
+// 必须等于包名：DSH 的 loader row id 就是包 specifier（带 scope）。
+assert.equal(registered.id, '@lxchapu/dsh-session-purge')
 
 const element = (type, props) => ({ type, props })
 const exports_ = registered.factory((name) => {
@@ -89,4 +90,38 @@ const shown = bulk.component({ ...bulkProps, useArchivedFilter: (sel) => sel('on
 assert.ok(shown !== null, '批量按钮必须在“仅显示已归档”时出现')
 assert.ok(!JSON.stringify(shown).toLowerCase().includes('badge'), '批量按钮不应再有角标')
 
-console.log('client.js 校验通过：注册正常，4 个插槽齐全，两个入口的显隐逻辑正确')
+// 失败提示必须把原因说出来（0.1.1 之前原因被存进 toast.message 却从未渲染）。
+const toastSlot = slots.find((s) => s.id === 'session-purge.toast')
+assert.ok(toastSlot !== undefined, '提示条插槽必须注册')
+const toastText = (state) => {
+  const node = toastSlot.component({
+    usePurgeToast: (selector) => selector(state),
+    dismissPurgeToast: () => {},
+    t: undefined,
+  })
+  return node === null ? '' : String(node.props.children)
+}
+
+// 活跃会话被拒：按错误码本地化，用户能看到该怎么做。
+const refused = toastText({
+  kind: 'failed',
+  deleted: 0,
+  failed: 1,
+  code: 'session-still-running',
+  message: 'the session is still running; stop it before deleting it permanently',
+})
+assert.ok(refused.includes('正在使用中'), `活跃会话的拒绝要显示可读原因，实际：${refused}`)
+assert.ok(!refused.includes('still running'), `本地化之后不应再露出宿主英文原文，实际：${refused}`)
+
+// 未登记的码退回宿主原文，原因不能被吞掉。
+const unknown = toastText({ kind: 'failed', deleted: 0, failed: 1, message: 'remove-log: EPERM' })
+assert.ok(unknown.includes('EPERM'), `未登记的错误码要露出宿主原文，实际：${unknown}`)
+
+// 部分成功：数量和原因都要报。
+const partial = toastText({ kind: 'partial', deleted: 2, failed: 1, message: 'remove-log: EBUSY' })
+assert.ok(
+  partial.includes('2') && partial.includes('EBUSY'),
+  `部分成功要同时报数量和原因，实际：${partial}`,
+)
+
+console.log('client.js 校验通过：注册正常，4 个插槽齐全，两个入口显隐正确，失败提示会说出原因')

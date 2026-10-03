@@ -44,10 +44,12 @@ DSH 本身只能「归档」会话——归档只是把会话从分组界面隐�
 
 ## 安全边界
 
-- **正在运行的会话会被拒绝**：仍发布在 `ctx.sessions` 里的会话不会被拔掉，接口返回
-  `the session is still running; stop it before deleting it permanently`，前端把这条
-  理由原样显示在对话框里。已归档会话按定义就是停止状态，所以这条只会对用户正在使用的
-  未归档会话生效。
+- **正在运行的会话会被拒绝**：仍发布在 `ctx.sessions` 里的会话不会被拔掉。这类结果里带
+  一个稳定错误码 `code: "session-still-running"`（并附英文原文
+  `the session is still running; stop it before deleting it permanently` 供日志使用），
+  前端把该码翻成能照做的提示显示在提示条里：「这条会话正在使用中：先关闭它（或用「归档」
+  把主视图关掉）再彻底删除。」已归档会话按定义就是停止状态，所以这条只会对用户正在使用的
+  未归档会话生效——**要删当前打开着的会话，先关掉它，或先归档**。
 - 删除是不可逆的，没有回收站；确认对话框是最后一道闸门。
 
 ## 为什么删完还要「清列表」
@@ -132,6 +134,12 @@ dsh plugin --profile desktop add link:<本目录绝对路径>
 `cordis.patch.yml` 里 `insert` 的 `name` 必须与 npm 包名逐字一致，否则宿主半解析不到
 模块，插件不会挂载。
 
+`lib/client.js` 里 `window.__ModuleLoader__.load({ id })` 的 `id` 同样必须与 npm 包名
+**逐字一致（含 scope）**。`dsh-client-modules` 用包 specifier 当作 loader row id 来校验
+注册结果，id 不匹配时它会改用该 row 的 fallback URL 再执行一次同一个 bundle，第二次执行
+立刻抛 `duplicate factory registration`，该条目 `import failed`，整个 web boot 失败。
+0.1.0 发布时这里写成了不带 scope 的 `dsh-session-purge`，正是 0.1.1 修掉的问题。
+
 改前端（`lib/client.js`）只需硬刷新页面；改宿主（`lib/index.js`）需要重启应用。
 
 `dsh.client.inject` 必须包含 `@deepseek-ai/dsh-api-session-controller`，否则新的
@@ -153,12 +161,28 @@ node scripts/audit-sessions.mjs <DSH 主目录>  # 也可显式指定
 这几类，并给出总数汇总。
 
 `scripts/check-client.mjs` 是前端半的离线回归校验：它在 `node:vm` 里执行 bundle，确认
-注册成功、4 个插槽齐全、以及两个入口的显隐逻辑（菜单项在普通行也渲染、批量按钮只在
-「仅显示已归档」时出现且不带角标）。改动 `lib/client.js` 后跑一次即可：
+注册成功、4 个插槽齐全、两个入口的显隐逻辑（菜单项在普通行也渲染、批量按钮只在
+「仅显示已归档」时出现且不带角标），以及失败提示确实会把原因说出来。改动 `lib/client.js`
+后跑一次即可：
 
 ```
 node scripts/check-client.mjs
 ```
+
+## 更新记录
+
+### 0.1.1
+
+- **修掉会导致 DSH 无法启动的注册 id**：`lib/client.js` 里 bundle 的 `id` 从不带 scope 的
+  `dsh-session-purge` 改为完整的 `@lxchapu/dsh-session-purge`。id 与包名不一致时
+  `dsh-client-modules` 会重放该 bundle，触发 `duplicate factory registration`，报
+  `web boot: 1 entry did not activate`，应用无法启动。
+- **删除失败时会说出原因**：此前提示条只显示「已删除 X 条，Y 条失败」——`toast.failed`
+  分支从未被赋值，宿主的 `warnings` / `error` 也从未渲染，用户看不到任何原因。现在失败时
+  优先显示宿主错误码对应的本地化提示，其次显示宿主原始错误文本；部分成功改用新增的
+  `toast.partialReason`，同时报数量和原因。
+- **宿主改用稳定错误码**：活跃会话的拒绝从裸英文文案改为 `code: "session-still-running"`
+  加英文原文，前端按当前语言显示能照做的提示；`status` 的 `build` 标记随之更新。
 
 ## 结构
 
