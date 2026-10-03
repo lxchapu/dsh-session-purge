@@ -59,7 +59,7 @@ DSH 本身只能「归档」会话——归档只是把会话从分组界面隐�
 
 > 0.1.2 之前这里用的是 `ctx.sessions.get(id) !== undefined`，于是凡是在当前进程里打开过
 > 的会话都会被永久判成「正在使用中」，归档也解除不了——这正是 0.1.1 上「单条会话怎么都
-> 删不掉」的原因。修法与回归校验见 `scripts/check-host.mjs`。
+> 删不掉」的原因。修法与回归校验见 git 仓库内的 `scripts/check-host.mjs`。
 
 ## 为什么删完还要「清列表」
 
@@ -157,6 +157,14 @@ dsh plugin --profile desktop add link:<本目录绝对路径>
 
 ## 脚本
 
+> `scripts/` 目录**不随 npm 包发布**（`package.json` 的 `files` 只含 `lib`、
+> `cordis.patch.yml` 和 `README.md`），仅存在于 git 仓库中。从 npm 安装的用户若想跑
+> 下面这些校验，请克隆仓库后在仓库根目录执行。
+>
+> ```
+> git clone https://github.com/lxchapu/dsh-session-purge.git
+> ```
+
 `scripts/audit-sessions.mjs` 是一个只读审计：它把磁盘上的会话日志目录、工作区记账、
 归档/置顶集合、各投影缓存（含旧版单文件缓存与第三方插件的存储）里的全部会话身份列出来，
 互相交叉核对并标出问题项：
@@ -188,6 +196,14 @@ node scripts/check-host.mjs
 
 ## 更新记录
 
+### 未发布
+
+- **文档修正**：`scripts/` 目录不随 npm 包发布，README 原先让人「跑一次
+  `node scripts/check-host.mjs`」的说法对从 npm 安装的用户不成立。现在在「脚本」一节
+  加了说明（脚本仅存在于 git 仓库，需要时克隆仓库执行），并在「结构」一节注明发布产物
+  只含 `lib/`、`cordis.patch.yml` 和 `README.md`。仅文档改动，无代码变化，因此未提升
+  版本号。
+
 ### 0.1.2
 
 - **修掉「单条会话怎么都删不掉」的根因**：判活闸门从 `ctx.sessions.get(id) !== undefined`
@@ -217,7 +233,7 @@ node scripts/check-host.mjs
 ## 结构
 
 ```
-dsh-session-purge/
+dsh-session-purge/                    # 以下为仓库结构
   package.json        # dsh.bundle.patch + dsh.client 双半声明
   cordis.patch.yml    # 宿主行的挂载声明
   scripts/audit-sessions.mjs  # 只读会话状态对账
@@ -226,3 +242,6 @@ dsh-session-purge/
   lib/index.js        # 宿主半：删除引擎 + /session-purge/api 路由
   lib/client.js       # 前端半：菜单项、底部批量按钮、确认框、提示条
 ```
+
+发布到 npm 的只有 `lib/`、`cordis.patch.yml` 和 `README.md`（见 `package.json` 的
+`files`），`scripts/` 属于仓库内容，不随包分发。
