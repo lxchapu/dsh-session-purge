@@ -1,6 +1,6 @@
 {
   "name": "@lxchapu/dsh-session-purge",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "彻底删除 DSH 会话：单条删除 + 仅看已归档时一键全部删除（带二次确认）",
   "keywords": [
     "dsh",

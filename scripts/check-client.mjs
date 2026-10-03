@@ -108,10 +108,11 @@ const refused = toastText({
   deleted: 0,
   failed: 1,
   code: 'session-still-running',
-  message: 'the session is still running; stop it before deleting it permanently',
+  message: 'the session is busy running a turn; stop it before deleting it permanently',
 })
-assert.ok(refused.includes('正在使用中'), `活跃会话的拒绝要显示可读原因，实际：${refused}`)
+assert.ok(refused.includes('正在跑'), `正在跑的会话被拒时要显示可读原因，实际：${refused}`)
 assert.ok(!refused.includes('still running'), `本地化之后不应再露出宿主英文原文，实际：${refused}`)
+assert.ok(!refused.includes('归档'), `拒绝原因不应再让用户去归档（归档并不释放驻留），实际：${refused}`)
 
 // 未登记的码退回宿主原文，原因不能被吞掉。
 const unknown = toastText({ kind: 'failed', deleted: 0, failed: 1, message: 'remove-log: EPERM' })

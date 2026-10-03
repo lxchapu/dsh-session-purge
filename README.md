@@ -44,13 +44,22 @@ DSH 本身只能「归档」会话——归档只是把会话从分组界面隐�
 
 ## 安全边界
 
-- **正在运行的会话会被拒绝**：仍发布在 `ctx.sessions` 里的会话不会被拔掉。这类结果里带
-  一个稳定错误码 `code: "session-still-running"`（并附英文原文
-  `the session is still running; stop it before deleting it permanently` 供日志使用），
-  前端把该码翻成能照做的提示显示在提示条里：「这条会话正在使用中：先关闭它（或用「归档」
-  把主视图关掉）再彻底删除。」已归档会话按定义就是停止状态，所以这条只会对用户正在使用的
-  未归档会话生效——**要删当前打开着的会话，先关掉它，或先归档**。
+- **只在会话真的在跑时拒绝**：判据是宿主自己的活跃字段 `ctx.agents.get(id).status`——
+  `running` 覆盖执行中的轮次、等待审批或回答、以及阻塞在工具里的步。这类结果里带一个
+  稳定错误码 `code: "session-still-running"`（并附英文原文供日志使用），前端把该码翻成
+  能照做的提示：「这条会话正在跑：先停掉当前这一轮（或等它结束）再彻底删除。」
+- **「进程里驻留着它」不是拒绝理由**。`ctx.sessions` 只表示进程内存里有一个 Session
+  对象，而它的生命周期就是持有该 Agent 的那个 fiber：会话一旦被打开过（或被后台唤醒
+  过），`ApiSessionAgentController` 会在自己那个与宿主同生命周期的 ctx 上
+  `ctx.agents.resume()`，于是这条驻留会一直留到应用退出。归档也不释放它——
+  `archiveSession` 只写归档集，并通过 `workspace/session-stop` 取消当前轮次，从不销毁
+  Agent。因此**已归档、已停止、甚至此刻正开在某个视图里的会话都能直接删**；它们下次被
+  打开时会因为日志已消失而报 `session/not-found`，这也是删除的正常结果。
 - 删除是不可逆的，没有回收站；确认对话框是最后一道闸门。
+
+> 0.1.2 之前这里用的是 `ctx.sessions.get(id) !== undefined`，于是凡是在当前进程里打开过
+> 的会话都会被永久判成「正在使用中」，归档也解除不了——这正是 0.1.1 上「单条会话怎么都
+> 删不掉」的原因。修法与回归校验见 `scripts/check-host.mjs`。
 
 ## 为什么删完还要「清列表」
 
@@ -169,7 +178,28 @@ node scripts/audit-sessions.mjs <DSH 主目录>  # 也可显式指定
 node scripts/check-client.mjs
 ```
 
+`scripts/check-host.mjs` 是宿主半判活的离线回归：确认「进程里驻留着」不再被当成
+「在跑」——驻留且 `status === 'idle'` 必须放行，只有 `running` 才拒绝，没有 Agent 注册表
+时退回保守的驻留判定。改动 `lib/index.js` 的判活逻辑后跑一次：
+
+```
+node scripts/check-host.mjs
+```
+
 ## 更新记录
+
+### 0.1.2
+
+- **修掉「单条会话怎么都删不掉」的根因**：判活闸门从 `ctx.sessions.get(id) !== undefined`
+  换成 `ctx.agents.get(id)?.status === 'running'`。`ctx.sessions` 只是进程内存里的 Session
+  存储，条目随持有它的 fiber 存活——会话只要被打开过就驻留到应用退出，归档只写归档集并
+  取消当前轮次、并不销毁 Agent。于是旧的闸门把每条打开过的会话永久判成「正在使用中」，
+  连已归档、已停止的都删不掉，且没有任何自救途径。现在只有真的在跑（含等待审批/回答、
+  卡在工具里）的会话会被拒，已归档/已关闭/仅开着的都能删。
+- **拒绝提示跟着改**：不再让用户去「关闭它或用归档把主视图关掉」（那条路根本不通），
+  改为说明先停掉当前这一轮或等它结束。
+- 新增 `scripts/check-host.mjs`：把「驻留 ≠ 在跑」这门判定的三种输入形态固定成离线回归。
+- `inject` 增加 `agents`；缺失时回退到旧的驻留判定（过于保守，但方向安全）。
 
 ### 0.1.1
 
@@ -192,6 +222,7 @@ dsh-session-purge/
   cordis.patch.yml    # 宿主行的挂载声明
   scripts/audit-sessions.mjs  # 只读会话状态对账
   scripts/check-client.mjs    # 前端半离线回归校验
+  scripts/check-host.mjs      # 宿主半判活（驻留 ≠ 在跑）离线回归
   lib/index.js        # 宿主半：删除引擎 + /session-purge/api 路由
   lib/client.js       # 前端半：菜单项、底部批量按钮、确认框、提示条
 ```
