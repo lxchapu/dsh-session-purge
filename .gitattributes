@@ -1,0 +1,9 @@
+# 仓库内统一用 LF；避免在 Windows 上因 core.autocrlf 让每行差异都变脏。
+* text=auto eol=lf
+
+# 这些是运行时被当作脚本读取的文本，尤其不要做行尾转换。
+*.js  text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.md   text eol=lf
